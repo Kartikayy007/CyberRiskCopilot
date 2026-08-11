@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+chroma_store/
+app/data/nist/*.pdf
+app/data/kev/*.json
+app/data/kev/*.csv
+.DS_Store
