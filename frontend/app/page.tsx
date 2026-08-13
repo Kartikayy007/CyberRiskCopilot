@@ -29,6 +29,25 @@ type ThreatIntel = {
   summary: string | null;
 };
 
+type RelatedControl = {
+  control_id: string | null;
+  control_name: string | null;
+  page: number | null;
+  distance: number | null;
+  confidence: string | null;
+};
+
+type CampaignDetail = {
+  threat_actor: string | null;
+  campaign_name: string | null;
+  target_profile: string | null;
+  exploit_chain: string | null;
+  ransomware: string | null;
+  confidence: string | null;
+  narrative: string | null;
+  iocs: string | null;
+};
+
 type Explanation = {
   why_it_ranks: string;
   remediation: string;
@@ -52,13 +71,18 @@ type GroupedRisk = {
   kev_status: string | null;
   kev_ransomware_use: boolean;
   kev_required_action: string | null;
-  active_campaign_matched: boolean;
-  active_ransomware_campaign: boolean;
+  kev_date_added: string | null;
+  threat_intel_campaign_matched: boolean;
+  ransomware_campaign_matched: boolean;
   threat_intel: ThreatIntel[];
+  campaign_detail: CampaignDetail | null;
+  related_controls: RelatedControl[];
   nist_control_id: string | null;
   nist_control_name: string | null;
   nist_control_excerpt: string | null;
   nist_page: number | null;
+  retrieval_distance: number | null;
+  retrieval_confidence: string | null;
   explanation: Explanation;
 };
 
@@ -78,6 +102,7 @@ type Status = {
   csv_counts?: Record<string, number>;
   degraded?: string[];
   error?: string | null;
+  kev_error?: string | null;
 };
 
 const ID_LABEL: Record<string, string> = {
@@ -103,7 +128,6 @@ export default function Home() {
   const [risks, setRisks] = useState<GroupedRisk[]>([]);
   const [loadingRisks, setLoadingRisks] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   const [query, setQuery] = useState("");
   const [nistHits, setNistHits] = useState<NistHit[]>([]);
@@ -130,8 +154,6 @@ export default function Home() {
     }
   }, []);
 
-  // The backend ingests on startup, so the page just waits for it to be ready
-  // rather than asking the user to trigger anything.
   useEffect(() => {
     let cancelled = false;
 
@@ -158,16 +180,6 @@ export default function Home() {
       cancelled = true;
     };
   }, [loadTop5]);
-
-  async function refresh() {
-    setRefreshing(true);
-    try {
-      await fetch(`${API_BASE}/ingest`, { method: "POST" });
-      await loadTop5();
-    } finally {
-      setRefreshing(false);
-    }
-  }
 
   async function searchNist() {
     if (!query.trim()) return;
@@ -219,18 +231,17 @@ export default function Home() {
       )}
 
       {status?.status === "ready" && (
-        <div className="mb-6 flex items-center gap-3 text-xs text-neutral-500">
-          <span>
-            {status.csv_counts?.assets} assets · {status.csv_counts?.vulnerabilities} vulns ·{" "}
-            {status.kev_records} KEV records · {status.nist_chunks} NIST controls embedded
-          </span>
-          <button
-            onClick={refresh}
-            disabled={refreshing}
-            className="px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800 disabled:opacity-50"
-          >
-            {refreshing ? "Refreshing…" : "Refresh data"}
-          </button>
+        <div className="mb-6 text-xs text-neutral-500">
+          {status.csv_counts?.assets} assets · {status.csv_counts?.vulnerabilities} vulns ·{" "}
+          {status.kev_records} KEV records · {status.nist_chunks} NIST controls embedded
+        </div>
+      )}
+
+      {status?.degraded?.includes("kev") && (
+        <div className="mb-6 border border-amber-900 bg-amber-950/30 rounded p-3 text-sm text-amber-200">
+          Degraded: the CISA KEV catalogue could not be loaded, so exploitation status is unknown
+          rather than negative for every finding.
+          {status.kev_error ? ` (${status.kev_error})` : ""}
         </div>
       )}
 
@@ -250,12 +261,20 @@ export default function Home() {
             <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
               <Chip text={`${ID_LABEL[r.id_type]}: ${r.risk_id}`} />
               {r.cvss !== null && <Chip text={`CVSS ${r.cvss}`} />}
-              {r.kev_status === "yes" && <Chip text="Listed in CISA KEV" tone="danger" />}
-              {r.kev_status === "unknown" && <Chip text="KEV status unknown" tone="warn" />}
-              {r.active_ransomware_campaign && <Chip text="Active ransomware campaign" tone="danger" />}
-              {!r.active_ransomware_campaign && r.active_campaign_matched && <Chip text="Active campaign" tone="warn" />}
-              {r.kev_ransomware_use && !r.active_ransomware_campaign && (
-                <Chip text="CISA: historical ransomware use" tone="warn" />
+              {r.kev_status === "matched" && (
+                <Chip text="Actively exploited — CISA KEV" tone="danger" />
+              )}
+              {r.kev_status === "unavailable" && (
+                <Chip text="KEV unavailable — status unknown" tone="warn" />
+              )}
+              {r.ransomware_campaign_matched && (
+                <Chip text="Matched active ransomware campaign" tone="danger" />
+              )}
+              {!r.ransomware_campaign_matched && r.threat_intel_campaign_matched && (
+                <Chip text="Matched active campaign" tone="warn" />
+              )}
+              {r.kev_ransomware_use && (
+                <Chip text="Known ransomware use — CISA historical" tone="warn" />
               )}
               {r.internet_exposed_asset_count > 0 && (
                 <Chip
@@ -332,6 +351,39 @@ export default function Home() {
                   </div>
                 ))
               )}
+              {r.campaign_detail && (
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer text-amber-500 hover:text-amber-400">
+                    Campaign detail (MDR advisory)
+                  </summary>
+                  <dl className="mt-2 space-y-1 text-xs text-neutral-400">
+                    {r.campaign_detail.exploit_chain && (
+                      <div>
+                        <dt className="inline text-neutral-500">Exploit chain: </dt>
+                        <dd className="inline">{r.campaign_detail.exploit_chain}</dd>
+                      </div>
+                    )}
+                    {r.campaign_detail.ransomware && (
+                      <div>
+                        <dt className="inline text-neutral-500">Ransomware: </dt>
+                        <dd className="inline">{r.campaign_detail.ransomware}</dd>
+                      </div>
+                    )}
+                    {r.campaign_detail.narrative && (
+                      <div>
+                        <dt className="inline text-neutral-500">Tradecraft: </dt>
+                        <dd className="inline">{r.campaign_detail.narrative}</dd>
+                      </div>
+                    )}
+                    {r.campaign_detail.iocs && (
+                      <div>
+                        <dt className="inline text-neutral-500">IOCs: </dt>
+                        <dd className="inline">{r.campaign_detail.iocs}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </details>
+              )}
             </div>
 
             <div>
@@ -339,11 +391,35 @@ export default function Home() {
                 Remediation — NIST SP 800-53 Rev.5{" "}
                 {r.nist_control_id ? `${r.nist_control_id} ${r.nist_control_name}` : ""}
                 {r.nist_page !== null ? ` (p.${r.nist_page})` : ""}
+                {r.retrieval_confidence ? ` · ${r.retrieval_confidence} confidence` : ""}
               </p>
               <p className="text-neutral-200">{r.explanation.remediation}</p>
+              {r.kev_required_action && (
+                <p className="text-sm text-neutral-400 mt-2">
+                  <span className="text-neutral-500">CISA KEV required action: </span>
+                  {r.kev_required_action}
+                </p>
+              )}
+              {r.related_controls.length > 0 && (
+                <p className="text-xs text-neutral-500 mt-2">
+                  Related controls:{" "}
+                  {r.related_controls
+                    .map((c) =>
+                      [c.control_id, c.control_name].filter(Boolean).join(" ") +
+                      (c.page !== null ? ` (p.${c.page})` : "")
+                    )
+                    .join("; ")}
+                </p>
+              )}
+              {r.retrieval_confidence === "low" && (
+                <p className="text-xs text-amber-500 mt-1">
+                  Low-confidence control match — verify before acting.
+                </p>
+              )}
               {r.explanation.source === "fallback" && (
                 <p className="text-xs text-neutral-600 mt-1">
-                  Generated from structured data (model unavailable).
+                  Extracted from the retrieved NIST control because the language model was
+                  unavailable.
                 </p>
               )}
             </div>

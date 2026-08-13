@@ -12,9 +12,9 @@ def fetch_kev_catalog(force_refresh: bool = False) -> pd.DataFrame:
     if force_refresh or not os.path.exists(path):
         resp = requests.get(settings.kev_url, timeout=30)
         resp.raise_for_status()
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(resp.text)
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         payload = json.load(f)
     df = pd.DataFrame(payload["vulnerabilities"])
     state.DATA["kev"] = df

@@ -20,6 +20,9 @@ def load_heavy(force_rebuild: bool = False, refresh_kev: bool = False) -> dict:
     state.STATUS = state.IngestStatus.RUNNING
     state.STATUS_DETAIL["error"] = None
     state.STATUS_DETAIL["degraded"] = []
+    state.STATUS_DETAIL["kev_error"] = None
+    state.STATUS_DETAIL["stage"] = "loading_embedding_model"
+    preload_embedder()
     state.STATUS_DETAIL["stage"] = "fetching_cisa_kev"
     try:
         kev_df = fetch_kev_catalog(force_refresh=refresh_kev)
@@ -61,4 +64,6 @@ def summary() -> dict:
         "stage": state.STATUS_DETAIL.get("stage"),
         "degraded": state.STATUS_DETAIL.get("degraded", []),
         "error": state.STATUS_DETAIL.get("error"),
+        "kev_error": state.STATUS_DETAIL.get("kev_error"),
+        "data_quality": state.STATUS_DETAIL.get("data_quality"),
     }

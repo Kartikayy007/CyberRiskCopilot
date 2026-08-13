@@ -5,6 +5,9 @@ from app.domains.scoring.intel import build_intel_lookup, shape_threat_intel
 from app.domains.scoring.scorer import compute_scores
 from app.domains.scoring.weights import (
     CRITICALITY_WEIGHT,
+    KEV_MATCHED,
+    KEV_NOT_MATCHED,
+    KEV_UNAVAILABLE,
     MULTI_ASSET_BUMP_CAP,
     MULTI_ASSET_BUMP_PER_ASSET,
 )
@@ -83,9 +86,13 @@ def compute_grouped_scores() -> list[dict]:
                 "max_criticality": _max_criticality((r["criticality"] for r in rows)),
                 "kev_matched": bool(chunk["kev_matched"].any()),
                 "kev_status": (
-                    "yes"
+                    KEV_MATCHED
                     if chunk["kev_matched"].any()
-                    else "unknown" if (chunk["kev_status"] == "unknown").any() else "no"
+                    else (
+                        KEV_UNAVAILABLE
+                        if (chunk["kev_status"] == KEV_UNAVAILABLE).any()
+                        else KEV_NOT_MATCHED
+                    )
                 ),
                 "kev_ransomware_use": bool(chunk["kev_ransomware_use"].any()),
                 "kev_required_action": next(
@@ -95,8 +102,8 @@ def compute_grouped_scores() -> list[dict]:
                 "kev_date_added": next(
                     (x for x in chunk["kev_date_added"] if isinstance(x, str) and x.strip()), None
                 ),
-                "active_campaign_matched": bool(chunk["active_campaign_matched"].any()),
-                "active_ransomware_campaign": bool(chunk["active_ransomware_campaign"].any()),
+                "threat_intel_campaign_matched": bool(chunk["threat_intel_campaign_matched"].any()),
+                "ransomware_campaign_matched": bool(chunk["ransomware_campaign_matched"].any()),
                 "threat_intel": intel,
                 "campaign_detail": _campaign_detail(intel),
                 "component_scores": canonical["component_scores"],

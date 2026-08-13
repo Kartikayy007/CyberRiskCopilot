@@ -37,7 +37,12 @@ class Settings:
         return os.getenv("GROQ_API_KEY")
 
     def admin_token(self) -> str | None:
-        return os.getenv("ADMIN_TOKEN")
+        token = os.getenv("ADMIN_TOKEN")
+        return token.strip() if token and token.strip() else None
+
+    def cors_origins(self) -> list[str]:
+        raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 settings = Settings()

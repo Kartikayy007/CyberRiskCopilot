@@ -23,19 +23,25 @@ def _tidy(text: str) -> str:
     return " ".join(str(text).split())[:MAX_FIELD_CHARS]
 
 
+_SECTION_STOPS = ("Discussion:", "Related Controls:", "Control Enhancements:", "References:")
+
+
 def _extract_requirements(chunk: str, limit: int = 2) -> str:
     if not chunk:
         return ""
     body = chunk.split("\n", 1)[1] if "\n" in chunk else chunk
-    body = body.split("Discussion:")[0]
+    for stop in _SECTION_STOPS:
+        body = body.split(stop)[0]
+    if "Control:" in body:
+        body = body.split("Control:", 1)[1]
     body = " ".join(body.split())
     parts = re.split(r"(?<=[.;])\s+(?=[a-z]\.\s|[A-Z0-9])", body)
     picked = []
     for p in parts:
-        p = p.strip()
+        p = re.sub(r"^[a-z]\.\s+", "", p.strip())
         if len(p) < 40:
             continue
-        if p.lower().startswith(("control:", "references:", "related controls")):
+        if p.lower().startswith(("control:", "references", "related controls", "discussion")):
             continue
         picked.append(p.rstrip(";") + ("" if p.endswith(".") else "."))
         if len(picked) == limit:

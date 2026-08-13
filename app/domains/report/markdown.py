@@ -1,4 +1,9 @@
 ID_LABEL = {"cve": "CVE", "synthetic_cve": "Synthetic CVE", "control_finding": "Control gap"}
+KEV_LABEL = {
+    "matched": "actively exploited — listed in CISA KEV",
+    "not_matched": "not listed in CISA KEV",
+    "unavailable": "unknown — CISA KEV unavailable",
+}
 
 
 def _format_intel(risk: dict) -> list[str]:
@@ -75,18 +80,19 @@ def render_report(risks: list[dict]) -> str:
             ),
             f"- **Business service at risk:** {services}"
             + (f" (criticality: {r['max_criticality']})" if r.get("max_criticality") else ""),
-            f"- **Listed in CISA KEV:** {r.get('kev_status') or 'unknown'}"
-            + (f" (added {r['kev_date_added'][:10]})" if r.get("kev_date_added") else "")
+            f"- **Exploitation status:** {KEV_LABEL.get(r.get('kev_status'), 'unknown')}"
+            + (f" (KEV added {r['kev_date_added'][:10]})" if r.get("kev_date_added") else ""),
+            "- **Known ransomware use (CISA historical):** "
+            + ("yes" if r.get("kev_ransomware_use") else "no"),
+            "- **Matched active ransomware campaign:** "
             + (
-                " · CISA records historical ransomware use"
-                if r.get("kev_ransomware_use")
-                else ""
-            ),
-            f"- **Active campaign targeting this:** "
-            + (
-                "yes — ransomware-associated"
-                if r.get("active_ransomware_campaign")
-                else "yes" if r.get("active_campaign_matched") else "none in current intel"
+                "yes"
+                if r.get("ransomware_campaign_matched")
+                else (
+                    "no — matched campaign is not ransomware-associated"
+                    if r.get("threat_intel_campaign_matched")
+                    else "no — no matching threat-intel record"
+                )
             ),
             "",
             "**Why this ranks here**",
@@ -123,7 +129,9 @@ def render_report(risks: list[dict]) -> str:
             lines.append("_Low-confidence control match — verify before acting._")
         if explanation.get("source") == "fallback":
             lines.append("")
-            lines.append("_Explanation generated from structured data (model unavailable)._")
+            lines.append(
+                "_Extracted from the retrieved NIST control because the language model was unavailable._"
+            )
         if r.get("alias_names"):
             lines.append("")
             lines.append(f"_Also reported as: {'; '.join(r['alias_names'])}._")

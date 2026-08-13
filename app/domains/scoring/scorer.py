@@ -4,12 +4,15 @@ from app.core import state
 from app.core.sanitize import yes
 from app.domains.scoring.intel import build_intel_lookup
 from app.domains.scoring.weights import (
-    ACTIVE_CAMPAIGN_NON_RANSOMWARE,
-    ACTIVE_CAMPAIGN_RANSOMWARE,
     AGING_SATURATION_DAYS,
+    CAMPAIGN_MATCH_NON_RANSOMWARE,
+    CAMPAIGN_MATCH_RANSOMWARE,
     BUSINESS_IMPACT_MIX,
     CRITICALITY_WEIGHT,
     EDR_APPLICABLE_ASSET_TYPES,
+    KEV_MATCHED,
+    KEV_NOT_MATCHED,
+    KEV_UNAVAILABLE,
     RTO_URGENCY,
     RTO_URGENCY_FLOOR,
     WEIGHTS,
@@ -115,7 +118,7 @@ def compute_scores() -> pd.DataFrame:
         intel_matches = intel_lookup.get(identifier, []) if isinstance(identifier, str) else []
         intel_ransomware = any((yes(m.get("ransomware_association")) for m in intel_matches))
         kev_ransomware = _kev_ransomware(kev_hit)
-        kev_status = "yes" if kev_hit else "no" if kev_available else "unknown"
+        kev_status = KEV_MATCHED if kev_hit else KEV_NOT_MATCHED if kev_available else KEV_UNAVAILABLE
         components = {
             "cvss": _cvss_score(row.get("cvss")),
             "exposure": (
@@ -126,16 +129,16 @@ def compute_scores() -> pd.DataFrame:
             "exploit_or_kev": min(
                 (0.5 if yes(row.get("exploit_available")) else 0.0) + (0.5 if kev_hit else 0.0), 1.0
             ),
-            "active_campaign": (
-                ACTIVE_CAMPAIGN_RANSOMWARE
+            "campaign_match": (
+                CAMPAIGN_MATCH_RANSOMWARE
                 if intel_ransomware
-                else ACTIVE_CAMPAIGN_NON_RANSOMWARE if intel_matches else 0.0
+                else CAMPAIGN_MATCH_NON_RANSOMWARE if intel_matches else 0.0
             ),
-            "kev_ransomware": 1.0 if kev_ransomware else 0.0,
+            "kev_ransomware_history": 1.0 if kev_ransomware else 0.0,
             "business_impact": _business_impact_score(row),
             "aging": _aging_score(row.get("days_open")),
-            "missing_control": _missing_applicable_control(row),
-            "patch_blocked": (
+            "control_gap": _missing_applicable_control(row),
+            "patch_constraint": (
                 1.0 if str(row.get("patch_available")).strip().lower() == "no" else 0.0
             ),
         }
@@ -170,8 +173,8 @@ def compute_scores() -> pd.DataFrame:
                 "kev_ransomware_use": kev_ransomware,
                 "kev_required_action": (kev_hit or {}).get("requiredAction"),
                 "kev_date_added": (kev_hit or {}).get("dateAdded"),
-                "active_campaign_matched": bool(intel_matches),
-                "active_ransomware_campaign": intel_ransomware,
+                "threat_intel_campaign_matched": bool(intel_matches),
+                "ransomware_campaign_matched": intel_ransomware,
                 "threat_intel_matches": intel_matches,
             }
         )

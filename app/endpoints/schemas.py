@@ -10,6 +10,8 @@ class IngestSummary(BaseModel):
     stage: str | None = None
     degraded: list[str] = Field(default_factory=list)
     error: str | None = None
+    kev_error: str | None = None
+    data_quality: dict | None = None
 
 
 class NistHit(BaseModel):
@@ -112,8 +114,8 @@ class ScoredRisk(_Row):
     kev_ransomware_use: bool | None = None
     kev_required_action: str | None = None
     kev_date_added: str | None = None
-    active_campaign_matched: bool | None = None
-    active_ransomware_campaign: bool | None = None
+    threat_intel_campaign_matched: bool | None = None
+    ransomware_campaign_matched: bool | None = None
 
 
 class TopRisk(_Row):
@@ -135,8 +137,8 @@ class TopRisk(_Row):
     kev_ransomware_use: bool | None = None
     kev_required_action: str | None = None
     kev_date_added: str | None = None
-    active_campaign_matched: bool | None = None
-    active_ransomware_campaign: bool | None = None
+    threat_intel_campaign_matched: bool | None = None
+    ransomware_campaign_matched: bool | None = None
     threat_intel: list[ThreatIntelItem] = Field(default_factory=list)
     related_controls: list[RelatedControl] = Field(default_factory=list)
     nist_control_id: str | None = None

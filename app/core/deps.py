@@ -7,7 +7,10 @@ from app.core.config import settings
 def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
     expected = settings.admin_token()
     if not expected:
-        return
+        raise HTTPException(
+            status_code=503,
+            detail="Administrative endpoints are disabled because ADMIN_TOKEN is not configured.",
+        )
     if not x_admin_token or not secrets.compare_digest(x_admin_token, expected):
         raise HTTPException(status_code=401, detail="Missing or invalid X-Admin-Token.")
 

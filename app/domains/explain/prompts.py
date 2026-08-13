@@ -24,7 +24,23 @@ def risk_facts(risk: dict) -> str:
     drivers = ", ".join(
         (f"{k}={v}" for k, v in sorted(components.items(), key=lambda kv: kv[1], reverse=True)[:3])
     )
-    return f"Identifier: {risk.get('risk_id')}\nVulnerability: {risk.get('vulnerability_name')}\nAffected assets ({risk.get('asset_count')}): {assets}\nInternet-exposed assets: {risk.get('internet_exposed_asset_count')}\nBusiness services: {services} (highest criticality: {risk.get('max_criticality')})\nCVSS: {risk.get('cvss')} | Composite risk score: {risk.get('score')}\nListed in CISA KEV (actively exploited): {risk.get('kev_status')}\nCISA historical ransomware use: {risk.get('kev_ransomware_use')}\nActive campaign currently targeting this: {risk.get('active_campaign_matched')} (ransomware-associated: {risk.get('active_ransomware_campaign')})\nThreat intelligence: {intel_line}{campaign_line}\nTop score drivers: {drivers}"
+    components = risk.get("component_scores") or {}
+    return (
+        f"Identifier: {risk.get('risk_id')}\n"
+        f"Vulnerability: {risk.get('vulnerability_name')}\n"
+        f"Affected assets ({risk.get('asset_count')}): {assets}\n"
+        f"Internet-exposed assets: {risk.get('internet_exposed_asset_count')}\n"
+        f"Business services: {services} (highest criticality: {risk.get('max_criticality')})\n"
+        f"CVSS: {risk.get('cvss')} | Composite risk score: {risk.get('score')}\n"
+        f"CISA KEV status: {risk.get('kev_status')}\n"
+        f"CISA historical ransomware use: {risk.get('kev_ransomware_use')}\n"
+        f"Matched local threat-intel campaign: {risk.get('threat_intel_campaign_matched')} "
+        f"(ransomware-associated: {risk.get('ransomware_campaign_matched')})\n"
+        f"Missing applicable endpoint control (EDR): {bool(components.get('control_gap'))}\n"
+        f"Vendor patch unavailable: {bool(components.get('patch_constraint'))}\n"
+        f"Threat intelligence: {intel_line}{campaign_line}\n"
+        f"Top score drivers: {drivers}"
+    )
 
 
 def build_prompt(risk: dict, control_id: str | None, control_name: str | None, chunk: str) -> str:
