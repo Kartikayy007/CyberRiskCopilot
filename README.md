@@ -10,8 +10,9 @@ applicable remediation control from the real NIST SP 800-53 Rev. 5 document.
 | | URL |
 |---|---|
 | Frontend | https://cyber-risk-copilot.vercel.app |
-| API + report | https://cyberriskcopilot.onrender.com/report |
-| OpenAPI | https://cyberriskcopilot.onrender.com/docs |
+| Human-readable brief | https://cyberriskcopilot.onrender.com/report |
+| Top-5 JSON | https://cyberriskcopilot.onrender.com/risks/top5 |
+| OpenAPI / Swagger | https://cyberriskcopilot.onrender.com/docs |
 
 The backend runs on a free Render instance, which sleeps after 15 minutes of
 inactivity — the first request after a sleep takes ~60 seconds to wake.
