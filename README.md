@@ -7,12 +7,24 @@ applicable remediation control from the real NIST SP 800-53 Rev. 5 document.
 
 ## Live demo
 
-Not yet deployed. The URL will be added here once the backend and frontend are hosted.
+| | URL |
+|---|---|
+| Frontend | https://cyber-risk-copilot.vercel.app |
+| API + report | https://cyberriskcopilot.onrender.com/report |
+| OpenAPI | https://cyberriskcopilot.onrender.com/docs |
+
+The backend runs on a free Render instance, which sleeps after 15 minutes of
+inactivity — the first request after a sleep takes ~60 seconds to wake.
 
 ## Stack
 
-FastAPI · pandas · sentence-transformers (`all-MiniLM-L6-v2`, local) · ChromaDB ·
-Groq `openai/gpt-oss-120b` · Next.js + React + TypeScript.
+FastAPI · pandas · `all-MiniLM-L6-v2` embeddings via ChromaDB's onnxruntime
+embedding function · ChromaDB · Groq `openai/gpt-oss-120b` ·
+Next.js + React + TypeScript.
+
+Embeddings run on onnxruntime rather than sentence-transformers/torch: torch put
+resident memory past the 512 MB ceiling on every free host. The weights are the
+same model, and retrieval distances matched the torch build to ±0.001.
 
 Requires **Python 3.12+** and **Node 20+**.
 
@@ -55,8 +67,8 @@ immediately and reports the stage (`loading_embedding_model`,
 `fetching_cisa_kev`, `embedding_nist_800_53`, `ready`). The risk endpoints
 return 503 with `Retry-After` until ingest completes.
 
-**First run downloads the NIST PDF (~6 MB) and embeds 861 control chunks — allow
-3–5 minutes.** Later runs reuse the persisted `chroma_store/`. Run a **single
+**First run downloads the NIST PDF (~6 MB) and the ONNX model (~79 MB), then
+embeds 861 control chunks — allow 3–5 minutes.** Later runs reuse the persisted `chroma_store/`. Run a **single
 worker**: state is per-process and parallel workers would each build their own
 vector store against the same SQLite file.
 
@@ -223,7 +235,15 @@ records, 861 NIST control chunks, 79 grouped risks.
 
 ## Deployment notes
 
-The backend needs roughly 1–2 GB RAM for torch and the embedding model, so
-512 MB free tiers will OOM. Hugging Face Spaces (Docker) suits it; Vercel suits
-the frontend. Set `ADMIN_TOKEN` and `CORS_ORIGINS` in production, and bake
-`chroma_store/` into the image to avoid a multi-minute cold start.
+Backend on Render free (Docker, 512 MB), frontend on Vercel.
+
+The 512 MB ceiling is what drove the onnxruntime embedder: with torch, resident
+memory sat around 700 MB and the instance OOMs. The `Dockerfile` downloads the
+NIST PDF, downloads the ONNX model and embeds all 861 chunks **at build time**,
+so the container boots ready — on 0.1 vCPU, doing that work on the first request
+would exceed any reasonable health-check grace period.
+
+`HOME` is pinned to `/app` in the image because the ONNX model cache is
+home-relative; if the build and runtime users disagree, the 79 MB model is
+re-downloaded on every boot. Set `ADMIN_TOKEN` and `CORS_ORIGINS` (the deployed
+frontend origin) in production.
