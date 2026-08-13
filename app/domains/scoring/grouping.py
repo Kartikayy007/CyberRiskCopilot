@@ -82,8 +82,21 @@ def compute_grouped_scores() -> list[dict]:
                 "business_services": services,
                 "max_criticality": _max_criticality((r["criticality"] for r in rows)),
                 "kev_matched": bool(chunk["kev_matched"].any()),
+                "kev_status": (
+                    "yes"
+                    if chunk["kev_matched"].any()
+                    else "unknown" if (chunk["kev_status"] == "unknown").any() else "no"
+                ),
                 "kev_ransomware_use": bool(chunk["kev_ransomware_use"].any()),
-                "ransomware_campaign_matched": bool(chunk["ransomware_campaign_matched"].any()),
+                "kev_required_action": next(
+                    (x for x in chunk["kev_required_action"] if isinstance(x, str) and x.strip()),
+                    None,
+                ),
+                "kev_date_added": next(
+                    (x for x in chunk["kev_date_added"] if isinstance(x, str) and x.strip()), None
+                ),
+                "active_campaign_matched": bool(chunk["active_campaign_matched"].any()),
+                "active_ransomware_campaign": bool(chunk["active_ransomware_campaign"].any()),
                 "threat_intel": intel,
                 "campaign_detail": _campaign_detail(intel),
                 "component_scores": canonical["component_scores"],

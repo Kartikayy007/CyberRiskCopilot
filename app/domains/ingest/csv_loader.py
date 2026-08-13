@@ -12,7 +12,7 @@ def load_csvs() -> dict:
     state.DATA["threat_intelligence"] = pd.read_csv(os.path.join(d, "threat_intelligence.csv"))
     state.DATA["business_services"] = pd.read_csv(os.path.join(d, "business_services.csv"))
     state.DATA["remediation_guidance"] = pd.read_csv(os.path.join(d, "remediation_guidance.csv"))
-    with open(os.path.join(d, "synthetic_threat_report.md")) as f:
+    with open(os.path.join(d, "synthetic_threat_report.md"), encoding="utf-8") as f:
         report = f.read()
     state.DATA["threat_report"] = report
     state.DATA["threat_report_campaigns"] = parse_campaigns(report)

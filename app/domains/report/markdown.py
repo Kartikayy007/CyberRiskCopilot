@@ -75,7 +75,19 @@ def render_report(risks: list[dict]) -> str:
             ),
             f"- **Business service at risk:** {services}"
             + (f" (criticality: {r['max_criticality']})" if r.get("max_criticality") else ""),
-            f"- **Actively exploited (CISA KEV):** {('yes' if r.get('kev_matched') else 'no')}",
+            f"- **Listed in CISA KEV:** {r.get('kev_status') or 'unknown'}"
+            + (f" (added {r['kev_date_added'][:10]})" if r.get("kev_date_added") else "")
+            + (
+                " · CISA records historical ransomware use"
+                if r.get("kev_ransomware_use")
+                else ""
+            ),
+            f"- **Active campaign targeting this:** "
+            + (
+                "yes — ransomware-associated"
+                if r.get("active_ransomware_campaign")
+                else "yes" if r.get("active_campaign_matched") else "none in current intel"
+            ),
             "",
             "**Why this ranks here**",
             explanation.get("why_it_ranks", ""),
@@ -91,6 +103,9 @@ def render_report(risks: list[dict]) -> str:
             + "**",
             explanation.get("remediation", ""),
         ]
+        if r.get("kev_required_action"):
+            lines.append("")
+            lines.append(f"CISA KEV required action: {r['kev_required_action']}")
         related = r.get("related_controls") or []
         if related:
             lines.append("")

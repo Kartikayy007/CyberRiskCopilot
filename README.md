@@ -22,17 +22,37 @@ cp .env.example .env   # fill in GROQ_API_KEY
 uvicorn app.main:app --reload
 ```
 
+Ingest runs automatically at startup — the endpoints below are live once
+`/ready` returns 200. Run a single worker.
+
+## Layout
+
+```
+app/core/       config, state, readiness guards, value coercion
+app/features/
+  ingest/       CSV + CISA KEV loading          } structured-query path
+  scoring/      weights, per-asset scoring, grouping, threat-intel join
+  rag/          NIST document -> chunks -> embeddings -> retrieval  } embedded path
+  explain/      the single LLM call, with a deterministic fallback
+  report/       markdown rendering
+  pipeline.py   scores -> retrieval -> explanation, version-keyed cache
+app/api/        routers + response schemas
+```
+
 ## Endpoints
 
 See `/docs` for live OpenAPI docs once running.
 
-- `POST /ingest` — load CSVs, fetch CISA KEV, build NIST vector store
+- `GET /health` — always 200; readiness is in the body. `GET /ready` — 503 until ingest completes
+- `POST /ingest` — manual refresh (`?force_rebuild`, `?refresh_kev`); `GET /ingest/status`
 - `GET /assets`, `/vulnerabilities`, `/threat-intel` — raw data inspection
-- `GET /risks/scored` — full ranked list with score breakdown
-- `GET /risks/top5` — top 5 risks with RAG-retrieved NIST guidance + LLM explanation
-- `GET /report` — human-readable formatted version of top5
-- `POST /nist/search` — raw RAG query against NIST 800-53
-- `GET /health`
+- `GET /risks/scored` — every finding with its score breakdown, ungrouped
+- `GET /risks/top5` — top 5 risks: affected assets, matched threat intel, retrieved NIST control, explanation
+- `GET /report` — the same five as human-readable markdown
+- `POST /nist/search` — raw retrieval against the NIST corpus, so the RAG layer is testable on its own
+
+`/risks/top5` and `/report` share a cache; both accept `?nocache=true` and
+report `X-Cache: hit|miss`.
 
 ## The data split
 

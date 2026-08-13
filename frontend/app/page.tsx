@@ -49,7 +49,11 @@ type GroupedRisk = {
   business_services: string[];
   max_criticality: string | null;
   kev_matched: boolean;
-  ransomware_campaign_matched: boolean;
+  kev_status: string | null;
+  kev_ransomware_use: boolean;
+  kev_required_action: string | null;
+  active_campaign_matched: boolean;
+  active_ransomware_campaign: boolean;
   threat_intel: ThreatIntel[];
   nist_control_id: string | null;
   nist_control_name: string | null;
@@ -246,8 +250,13 @@ export default function Home() {
             <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
               <Chip text={`${ID_LABEL[r.id_type]}: ${r.risk_id}`} />
               {r.cvss !== null && <Chip text={`CVSS ${r.cvss}`} />}
-              {r.kev_matched && <Chip text="Actively exploited (KEV)" tone="danger" />}
-              {r.ransomware_campaign_matched && <Chip text="Ransomware campaign" tone="danger" />}
+              {r.kev_status === "yes" && <Chip text="Listed in CISA KEV" tone="danger" />}
+              {r.kev_status === "unknown" && <Chip text="KEV status unknown" tone="warn" />}
+              {r.active_ransomware_campaign && <Chip text="Active ransomware campaign" tone="danger" />}
+              {!r.active_ransomware_campaign && r.active_campaign_matched && <Chip text="Active campaign" tone="warn" />}
+              {r.kev_ransomware_use && !r.active_ransomware_campaign && (
+                <Chip text="CISA: historical ransomware use" tone="warn" />
+              )}
               {r.internet_exposed_asset_count > 0 && (
                 <Chip
                   text={`Internet-exposed ${r.internet_exposed_asset_count}/${r.asset_count}`}

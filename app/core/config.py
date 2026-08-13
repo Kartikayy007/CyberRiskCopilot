@@ -36,5 +36,8 @@ class Settings:
     def groq_api_key(self) -> str | None:
         return os.getenv("GROQ_API_KEY")
 
+    def admin_token(self) -> str | None:
+        return os.getenv("ADMIN_TOKEN")
+
 
 settings = Settings()

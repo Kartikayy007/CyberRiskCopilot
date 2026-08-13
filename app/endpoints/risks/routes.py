@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import PlainTextResponse
 from app.endpoints import schemas
-from app.core.deps import require_ready
+from app.core.deps import require_admin_for_nocache, require_ready
 from app.core.sanitize import clean
 from app.domains import pipeline
 from app.domains.report.markdown import render_report
@@ -15,8 +15,15 @@ def risks_scored():
     return clean(compute_scores().to_dict("records"))
 
 
-@router.get("/risks/top5", responses={200: {"model": list[schemas.TopRisk]}})
-def risks_top5(response: Response, nocache: bool = Query(False)):
+@router.get(
+    "/risks/top5",
+    responses={200: {"model": list[schemas.TopRisk]}},
+    dependencies=[Depends(require_admin_for_nocache)],
+)
+def risks_top5(
+    response: Response,
+    nocache: bool = Query(False),
+):
     if nocache:
         pipeline.invalidate()
     risks, was_hit = pipeline.get_top_risks()
@@ -25,7 +32,10 @@ def risks_top5(response: Response, nocache: bool = Query(False)):
 
 
 @router.get(
-    "/report", response_class=PlainTextResponse, responses={200: {"content": {"text/markdown": {}}}}
+    "/report",
+    response_class=PlainTextResponse,
+    responses={200: {"content": {"text/markdown": {}}}},
+    dependencies=[Depends(require_admin_for_nocache)],
 )
 def report(response: Response, nocache: bool = Query(False)):
     if nocache:

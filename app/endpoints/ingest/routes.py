@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.deps import require_admin
 from app.endpoints.schemas import IngestSummary
 from app.core import state
 from app.domains import pipeline
@@ -7,7 +8,7 @@ from app.domains.ingest import bootstrap
 router = APIRouter()
 
 
-@router.post("/ingest", response_model=IngestSummary)
+@router.post("/ingest", response_model=IngestSummary, dependencies=[Depends(require_admin)])
 def ingest(
     force_rebuild: bool = Query(False, description="Re-embed NIST 800-53 from scratch"),
     refresh_kev: bool = Query(False, description="Re-download the CISA KEV catalog"),

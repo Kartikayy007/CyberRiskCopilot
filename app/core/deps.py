@@ -1,5 +1,22 @@
-from fastapi import HTTPException
+import secrets
+from fastapi import Header, HTTPException, Query
 from app.core import state
+from app.core.config import settings
+
+
+def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
+    expected = settings.admin_token()
+    if not expected:
+        return
+    if not x_admin_token or not secrets.compare_digest(x_admin_token, expected):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Admin-Token.")
+
+
+def require_admin_for_nocache(
+    nocache: bool = Query(False), x_admin_token: str | None = Header(default=None)
+) -> None:
+    if nocache:
+        require_admin(x_admin_token)
 
 
 def require_structured() -> None:

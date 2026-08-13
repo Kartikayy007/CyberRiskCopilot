@@ -1,3 +1,4 @@
+import re
 import json
 import time
 from pydantic import BaseModel, Field, ValidationError
@@ -22,7 +23,29 @@ def _tidy(text: str) -> str:
     return " ".join(str(text).split())[:MAX_FIELD_CHARS]
 
 
-def _fallback(risk: dict, control_id: str | None, control_name: str | None, page) -> dict:
+def _extract_requirements(chunk: str, limit: int = 2) -> str:
+    if not chunk:
+        return ""
+    body = chunk.split("\n", 1)[1] if "\n" in chunk else chunk
+    body = body.split("Discussion:")[0]
+    body = " ".join(body.split())
+    parts = re.split(r"(?<=[.;])\s+(?=[a-z]\.\s|[A-Z0-9])", body)
+    picked = []
+    for p in parts:
+        p = p.strip()
+        if len(p) < 40:
+            continue
+        if p.lower().startswith(("control:", "references:", "related controls")):
+            continue
+        picked.append(p.rstrip(";") + ("" if p.endswith(".") else "."))
+        if len(picked) == limit:
+            break
+    return " ".join(picked)
+
+
+def _fallback(
+    risk: dict, control_id: str | None, control_name: str | None, page, chunk: str = ""
+) -> dict:
     services = ", ".join(risk.get("business_services") or []) or "an unmapped service"
     intel = (risk.get("threat_intel") or [{}])[0]
     reasons = [f"affects {risk.get('asset_count')} asset(s) supporting {services}"]
@@ -37,11 +60,17 @@ def _fallback(risk: dict, control_id: str | None, control_name: str | None, page
             f'matched to the "{intel['campaign_name']}" campaign attributed to {intel.get('threat_actor')}'
         )
     control = f"{control_id} ({control_name})" if control_id else "the retrieved NIST control"
+    requirement = _extract_requirements(chunk)
+    remediation = (
+        f"Apply {control} from NIST SP 800-53 Rev.5"
+        + (f", p.{page}" if page is not None else "")
+        + f", to {risk.get('vulnerability_name')} on the affected assets."
+    )
+    if requirement:
+        remediation += f" The control requires: {_tidy(requirement)}"
     return {
         "why_it_ranks": f"Scores {risk.get('score')} because it " + "; ".join(reasons) + ".",
-        "remediation": f"Apply {control} from NIST SP 800-53 Rev.5"
-        + (f", p.{page}" if page is not None else "")
-        + f", to {risk.get('vulnerability_name')} on the affected assets.",
+        "remediation": remediation,
         "source": "fallback",
     }
 
@@ -53,7 +82,7 @@ def explain_risk(risk: dict, hit: dict | None) -> dict:
     control_name = hit.get("control_name")
     page = hit.get("page")
     if not chunk or not settings.groq_api_key():
-        return _fallback(risk, control_id, control_name, page)
+        return _fallback(risk, control_id, control_name, page, chunk)
     prompt = prompts.build_prompt(risk, control_id, control_name, chunk)
     for attempt in range(MAX_ATTEMPTS):
         try:
@@ -74,4 +103,4 @@ def explain_risk(risk: dict, hit: dict | None) -> dict:
                 time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
                 continue
             break
-    return _fallback(risk, control_id, control_name, page)
+    return _fallback(risk, control_id, control_name, page, chunk)

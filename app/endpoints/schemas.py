@@ -108,8 +108,12 @@ class ScoredRisk(_Row):
     id_type: str | None = None
     score: float | None = None
     kev_matched: bool | None = None
+    kev_status: str | None = None
     kev_ransomware_use: bool | None = None
-    ransomware_campaign_matched: bool | None = None
+    kev_required_action: str | None = None
+    kev_date_added: str | None = None
+    active_campaign_matched: bool | None = None
+    active_ransomware_campaign: bool | None = None
 
 
 class TopRisk(_Row):
@@ -127,8 +131,12 @@ class TopRisk(_Row):
     business_services: list[str] = Field(default_factory=list)
     max_criticality: str | None = None
     kev_matched: bool | None = None
+    kev_status: str | None = None
     kev_ransomware_use: bool | None = None
-    ransomware_campaign_matched: bool | None = None
+    kev_required_action: str | None = None
+    kev_date_added: str | None = None
+    active_campaign_matched: bool | None = None
+    active_ransomware_campaign: bool | None = None
     threat_intel: list[ThreatIntelItem] = Field(default_factory=list)
     related_controls: list[RelatedControl] = Field(default_factory=list)
     nist_control_id: str | None = None
