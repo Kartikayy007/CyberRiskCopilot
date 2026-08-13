@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+.env
+.DS_Store
+chroma_store
+frontend
+node_modules
+README.md
+CLAUDE.md
+**/data/nist/*.pdf
+**/data/kev/*.json
+**/data/kev/*.csv
