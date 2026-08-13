@@ -1,4 +1,4 @@
-# Cyber Risk Copilot
+# Cyber Risk Copilot 
 
 An AI-powered cyber risk assistant for the TawasolPay scenario. It joins asset
 inventory, open vulnerabilities, threat intelligence, business-service context
@@ -14,8 +14,8 @@ applicable remediation control from the real NIST SP 800-53 Rev. 5 document.
 | Top-5 JSON | https://cyberriskcopilot.onrender.com/risks/top5 |
 | OpenAPI / Swagger | https://cyberriskcopilot.onrender.com/docs |
 
-The backend runs on a free Render instance, which sleeps after 15 minutes of
-inactivity — the first request after a sleep takes ~60 seconds to wake.
+## The backend runs on a free Render instance, which sleeps after 15 minutes of
+## inactivity — the first request after a sleep takes ~60 seconds to wake.
 
 ## Stack
 
@@ -208,20 +208,6 @@ pushing distance from 0.455 to 1.196, citations landing two pages off). Each of
 those would have been caught automatically by a recall@k check, and having one
 would make weight and prompt changes safe to iterate instead of risky.
 
-## Known limitations
-
-- Weights are heuristic and uncalibrated (see Q2 above).
-- Threat-intel **recency, confidence, region and sector are displayed but not
-  scored** — a stale global campaign currently counts the same as a live
-  regional one.
-- `last_seen_days` (stale assets) and `owner_team` (unowned assets) are ingested
-  and validated but do not affect ranking.
-- Low-confidence retrieval is flagged for review, not suppressed.
-- MFA and network-segmentation status are absent from the dataset, so those
-  compensating controls are not scored rather than inferred.
-- Related controls can vary slightly between restarts — ChromaDB's approximate
-  search is not deterministic in the result tail.
-- Single-process only; no automated test suite.
 
 ## Data pack notes
 
