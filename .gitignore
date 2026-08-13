@@ -4,7 +4,8 @@ __pycache__/
 .venv/
 venv/
 chroma_store/
-app/data/nist/*.pdf
-app/data/kev/*.json
-app/data/kev/*.csv
+**/data/nist/*.pdf
+**/data/kev/*.json
+**/data/kev/*.csv
 .DS_Store
+/CLAUDE.md
